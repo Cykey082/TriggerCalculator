@@ -1,3 +1,11 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿using TriggerCalculator;
 
-Console.WriteLine("Hello, World!");
+Storage storage=new Storage();
+while (!storage.IsEnd)
+{
+    storage.Print();
+    var cmd=Console.ReadLine()!;
+    storage.Execute(cmd);
+}
+storage.Print();
+Console.ReadKey();
