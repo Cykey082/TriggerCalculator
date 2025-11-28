@@ -6,10 +6,19 @@ public static class Executor
     {
         try
         {
+            // 开始新的回合日志收集
+            storage.StartRoundLog();
             var results = Parser.Parse(command, storage.Players).HopeOfLive();
+            if (!Parser.PatchDupCards(results))
+            {
+                Console.WriteLine("非法：同一玩家重复使用同一张手牌。");
+                return;
+            }
             foreach (var result in results)
             {
+                // 打印并记录操作描述
                 result.Print();
+                storage.AddRoundEvent(result.ToString());
                 storage.Executes(result);
             }
             foreach (var result in results)
@@ -17,6 +26,8 @@ public static class Executor
                 storage.PostExecutes(result);
             }
             storage.PostExecute();
+            // 回合执行完毕，把当前回合日志保留供下回合显示
+            storage.EndRoundLog();
         }
         catch (ParserException e)
         {
@@ -26,92 +37,13 @@ public static class Executor
 
     public static void Executes(this Storage storage, Operation operation)
     {
-        operation.Card.Endurance -= operation.Repeat;
-        switch (operation.Card.Id)
-        {
-            case 1:
-                storage.Execute1(operation);
-                break;
-            case 2:
-                storage.Execute2(operation);
-                break;
-            case 3:
-                storage.Execute3(operation);
-                break;
-            case 4:
-                storage.Execute4(operation);
-                break;
-        }
-    }
-    public static void Execute1(this Storage storage, Operation operation)
-    {
-        operation.Target.Ammo += operation.Repeat * 20;
-        if(operation.Target.Ammo>operation.Target.MaxAmmo)
-            operation.Target.Ammo = operation.Target.MaxAmmo;
-    }
-
-    public static void Execute2(this Storage storage, Operation operation)
-    {
-        var block = operation.Repeat * (operation.User.BlockLevel + 1) * 10;
-        operation.Target.Block += block;
-        operation.Target.MaxBlock += block;
-    }
-
-    public static void Execute3(this Storage storage, Operation operation)
-    {
-        operation.User.Ammo -= operation.Card.RequireAmmo * operation.Repeat;
-        var damage = operation.Card.Damage * operation.Repeat;
-        if (damage < operation.Target.Block)
-        {
-            operation.Target.Block -= damage;
-            return;
-        }
-        damage-=operation.Target.Block;
-        operation.Target.Block = 0;
-        operation.Target.Health -= damage;
-        if (operation.Target.Health <= operation.Target.Injury * 10)
-        {
-            operation.Target.IsAlive = false;
-        }
-    }
-
-    public static void Execute4(this Storage storage, Operation operation)
-    {
-        operation.User.Ammo -= operation.Card.RequireAmmo;
-        var damage = operation.Card.Damage;
-        if (damage < operation.Target.Block)
-        {
-            operation.Target.Block -= damage;
-            return;
-        }
-        damage-=operation.Target.Block;
-        operation.Target.Block = 0;
-        operation.Target.Health -= damage;
-        if (operation.Target.Health <= operation.Target.Injury * 10)
-        {
-            operation.Target.IsAlive = false;
-        }
-        operation.Target.Injury += 2;
-        operation.Target.InjuryCooldown = 3;
+        if (operation.Card.Endurance > 0)
+            operation.Card.Endurance -= operation.Repeat;
+        operation.Card.Effect?.Execute(storage, operation);
     }
     public static void PostExecutes(this Storage storage, Operation operation)
     {
-        switch (operation.Card.Id)
-        {
-            case 2:
-                storage.PostExecute2(operation);
-                break;
-        }
-    }
-
-    public static void PostExecute2(this Storage storage, Operation operation)
-    {
-        if (operation.Target.Block != operation.Target.MaxBlock)
-            operation.Target.BlockLevel = 1;
-        else if (operation.Target.BlockLevel < 3)
-            operation.Target.BlockLevel++;
-        operation.Target.Block = 0;
-        operation.Target.MaxBlock = 0;
+        operation.Card.Effect?.PostExecute(storage, operation);
     }
     public static void PostExecute(this Storage storage)
     {

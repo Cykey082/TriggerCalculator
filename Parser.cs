@@ -33,12 +33,11 @@ public static class Parser
 
     private static void ParseSegment(string seg, Player user, Player[] allPlayers, List<Operation> sink)
     {
-        int mp = 2; // 每玩家 2 行动点
         var tokens = Split(seg, ',');
         foreach (var tok in tokens)
         {
             var (code, repeat) = ParseToken(tok);        // 1*3 -> (1,3)
-            var op = BuildOperation(code, repeat, user, allPlayers, ref mp);
+            var op = BuildOperation(code, repeat, user, allPlayers);
             if (op != null) sink.Add(op);                // 内置牌可能返回 null
         }
     }
@@ -56,14 +55,15 @@ public static class Parser
     }
 
     // 根据 code 生成 Operation；检查资源、耐久等
-    private static Operation? BuildOperation(int code, int repeat, Player user, Player[] allPlayers, ref int mp)
+    private static Operation? BuildOperation(int code, int repeat, Player user, Player[] allPlayers)
     {
         // 1,2 是内置牌
         if (code is 1 or 2)
         {
-            if (repeat > mp) throw new ParserException($"{user.Name} 行动点不足(code={code})");
-            mp -= repeat;
-            return new Operation(user, user, Card.From(code), repeat);
+            var card = Card.From(code);
+            if (repeat * card.RequirePoints > user.ActionPoints) throw new ParserException($"{user.Name} 行动点不足(code={code})");
+            user.ActionPoints -= repeat * card.RequirePoints;
+            return new Operation(user, user, card, repeat);
         }
 
         // 11,12,13 对应 Hand 0,1,2
@@ -79,13 +79,13 @@ public static class Parser
             if (repeat > card.Endurance)
                 throw new ParserException($"{user.Name} 牌【{card.Name}】耐久不足");
 
-            if (repeat*card.RequirePoints > mp)
+            if (repeat * card.RequirePoints > user.ActionPoints)
                 throw new ParserException($"{user.Name} 行动点不足(code={code})");
-            
-            if(user.Ammo<user.Hand[handIndex]!.RequireAmmo*repeat)
+
+            if (user.Ammo < user.Hand[handIndex]!.RequireAmmo * repeat)
                 throw new ParserException($"{user.Name} 火药不足(code={code})");
 
-            mp -= repeat;
+            user.ActionPoints -= repeat * card.RequirePoints;
             // 13 打对方，其余打自己
             var target = code is 11 or 12 or 13
                 ? allPlayers.First(p => p != user)
@@ -105,6 +105,27 @@ public static class Parser
     {
         return ops.OrderByDescending(op => op.Card.Hope).ToList();
     }
+    public static bool PatchDupCards(List<Operation> ops)
+    {
+        if (ops == null || ops.Count == 0) return true;
+        HashSet<Card> set = new HashSet<Card>();
+        Player owner = ops.First().User;
+        foreach (var op in ops)
+        {
+            if (owner != op.User)
+            {
+                set.Clear();
+                owner = op.User;
+            }
+
+            if (!set.Add(op.Card))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
 
 /*===================== 辅助类型 =====================*/
@@ -118,6 +139,12 @@ public sealed class Operation
     public Operation(Player user, Player target, Card card, int repeat)
     {
         User = user; Target = target; Card = card; Repeat = repeat;
+    }
+    public override string ToString()
+    {
+        if (User != Target)
+            return $"{User.Name} 对 {Target.Name} 使用了 {Card.Name}{(Repeat>0?"*"+Repeat.ToString():string.Empty)}";
+        return $"{User.Name} 使用了 {Card.Name}{(Repeat>0?"*"+Repeat.ToString():string.Empty)}";
     }
 }
 
