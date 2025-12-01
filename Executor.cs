@@ -8,12 +8,51 @@ public static class Executor
         {
             // 开始新的回合日志收集
             storage.StartRoundLog();
-            var results = Parser.Parse(command, storage.Players).HopeOfLive();
+            // 解析为意图请求 -> 验证 -> 构建 Operation -> 执行
+            var requests = Parser.ParseRequests(command, storage.Players);
+            var validator = new RuleEngine();
+            var vr = validator.ValidateRequests(requests, storage);
+            if (!vr.IsValid)
+            {
+                if (vr.Errors != null && vr.Errors.Count > 0)
+                {
+                    foreach (var e in vr.Errors) Console.WriteLine(e);
+                }
+                else
+                {
+                    Console.WriteLine(vr.Message);
+                }
+                return;
+            }
+
+            var ops = new List<Operation>();
+            foreach (var req in requests)
+            {
+                var user = req.User;
+                var code = req.Code;
+                var repeat = req.Repeat;
+                if (code is 1 or 2)
+                {
+                    var card = Card.From(code);
+                    ops.Add(new Operation(user, user, card, repeat));
+                }
+                else if (code >= 11)
+                {
+                    int handIndex = code - 11;
+                    if (handIndex < 0 || handIndex >= user.Hand.Length) continue;
+                    var card = user.Hand[handIndex]!;
+                    var target = card.Target == TargetType.Opponent ? storage.Players.First(p => p != user) : user;
+                    ops.Add(new Operation(user, target, card, repeat));
+                }
+            }
+
+            var results = ops.HopeOfLive();
             if (!Parser.PatchDupCards(results))
             {
                 Console.WriteLine("非法：同一玩家重复使用同一张手牌。");
                 return;
             }
+
             foreach (var result in results)
             {
                 // 打印并记录操作描述
@@ -21,10 +60,12 @@ public static class Executor
                 storage.AddRoundEvent(result.ToString());
                 storage.Executes(result);
             }
+
             foreach (var result in results)
             {
                 storage.PostExecutes(result);
             }
+
             storage.PostExecute();
             // 回合执行完毕，把当前回合日志保留供下回合显示
             storage.EndRoundLog();
@@ -33,6 +74,34 @@ public static class Executor
         {
             Console.WriteLine(e.Message);
         }
+    }
+
+    // 直接执行一组已经构造好的 Operation（绕过 Parser）
+    public static void ExecuteOperations(this Storage storage, IEnumerable<Operation> operations)
+    {
+        if (operations == null) return;
+        storage.StartRoundLog();
+        var results = operations.ToList().HopeOfLive();
+        if (!Parser.PatchDupCards(results))
+        {
+            Console.WriteLine("非法：同一玩家重复使用同一张手牌（ExecuteOperations）。");
+            return;
+        }
+
+        foreach (var op in results)
+        {
+            op.Print();
+            storage.AddRoundEvent(op.ToString());
+            storage.Executes(op);
+        }
+
+        foreach (var op in results)
+        {
+            storage.PostExecutes(op);
+        }
+
+        storage.PostExecute();
+        storage.EndRoundLog();
     }
 
     public static void Executes(this Storage storage, Operation operation)

@@ -120,7 +120,7 @@ public static class Interactive
                 }
                 else if (key.Key == ConsoleKey.Enter)
                 {
-                    // finalize round, build command and execute
+                    // finalize round: build command string, parse into requests, validate via RuleEngine, then execute
                     var segments = new string[players];
                     for (int p = 0; p < players; p++)
                     {
@@ -134,11 +134,54 @@ public static class Interactive
                         }
                         segments[p] = string.Join(',', list);
                     }
-                    var cmd = string.Join(';', segments);
-                    Console.Clear();
-                    Console.WriteLine("执行命令：" + cmd);
-                    storage.Execute(cmd);
-                    break;
+                    var command = string.Join(';', segments);
+                    try
+                    {
+                        var requests = Parser.ParseRequests(command, storage.Players);
+                        var validator = new RuleEngine();
+                        var vr = validator.ValidateRequests(requests, storage);
+                        if (!vr.IsValid)
+                        {
+                            // show multiple errors
+                            if (vr.Errors != null && vr.Errors.Count > 0)
+                                FlashMessages(vr.Errors, 1000);
+                            else
+                                FlashMessage(vr.Message, 1000);
+                            continue; // back to planning
+                        }
+
+                        // convert requests to operations
+                        var ops = new List<Operation>();
+                        foreach (var req in requests)
+                        {
+                            var user = req.User;
+                            var code = req.Code;
+                            var repeat = req.Repeat;
+                            if (code is 1 or 2)
+                            {
+                                var card = Card.From(code);
+                                ops.Add(new Operation(user, user, card, repeat));
+                            }
+                            else if (code >= 11)
+                            {
+                                int handIndex = code - 11;
+                                if (handIndex >= user.Hand.Length) continue;
+                                var handCard = user.Hand[handIndex];
+                                if (handCard == null) continue;
+                                var target = handCard.Target == TargetType.Opponent ? storage.Players.First(x => x != user) : user;
+                                ops.Add(new Operation(user, target, handCard, repeat));
+                            }
+                        }
+
+                        Console.Clear();
+                        storage.ExecuteOperations(ops);
+                        break;
+                    }
+                    catch (ParserException ex)
+                    {
+                        FlashMessage(ex.Message, 800);
+                        continue;
+                    }
                 }
                 else if (key.Key == ConsoleKey.Escape)
                 {
@@ -281,7 +324,7 @@ public static class Interactive
             var card = code <= 4 ? Card.From(code) : p.Hand[code - 11];
             string label;
             if (card == null) label = " [ ]";
-            else label = $" [{card.Name}]{(card.Endurance>0?" Usage:"+card.Endurance.ToString(): string.Empty)} Points:{card.RequirePoints} Ammo:{card.RequireAmmo}";
+            else label = $" [{card.Name}]{(card.Endurance>=0?" Usage:"+card.Endurance.ToString(): string.Empty)} Points:{card.RequirePoints} Ammo:{card.RequireAmmo}";
 
             // selected marker: n* ; if cursor is on it and selected>0 show n>
             if (arr[opt] > 0)
@@ -306,6 +349,29 @@ public static class Interactive
             Console.SetCursorPosition(left, top);
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.Write(msg);
+            Console.ResetColor();
+            System.Threading.Thread.Sleep(ms);
+        }
+        catch { }
+    }
+
+    private static void FlashMessages(IEnumerable<string> msgs, int ms)
+    {
+        if (msgs == null) return;
+        var list = msgs.ToList();
+        if (list.Count == 0) return;
+        int width = Console.WindowWidth;
+        int maxLen = list.Max(s => s.Length);
+        int left = Math.Max(0, (width - maxLen) / 2);
+        int top = Math.Max(0, Console.WindowHeight - 5 - list.Count + 1);
+        try
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            for (int i = 0; i < list.Count; i++)
+            {
+                Console.SetCursorPosition(left, top + i);
+                Console.Write(list[i].PadRight(maxLen));
+            }
             Console.ResetColor();
             System.Threading.Thread.Sleep(ms);
         }

@@ -11,18 +11,25 @@ public record Card
     public bool Repeatable { get; init; }
     public int Damage { get; init; }
     public ICardEffect? Effect { get; init; }
+    public TargetType Target { get; init; } = TargetType.Self;
 
     public static readonly Card[] Lib =
     {
         new(),
-        new(){Id=1,Name = "装填",Endurance = -1,RequirePoints = 1,Repeatable = true,Hope = 1, Effect = new Effect1()},
-        new(){Id=2,Name = "格挡",Endurance = -1,RequirePoints = 1,Repeatable = true,Hope = 2, Effect = new Effect2()},
-        new(){Id=3,Name = "搏击",Endurance = 2,RequirePoints = 1,Repeatable = true,RequireAmmo = 20,Damage = 20,Hope = -1, Effect = new Effect3()},
-        new(){Id=4,Name = "枪击",Endurance = 2,RequirePoints = 2,RequireAmmo = 80,Damage = 70,Hope = -2, Effect = new Effect4()}
+    new(){Id=1,Name = "装填",Endurance = -1,RequirePoints = 1,Repeatable = true,Hope = 1, Effect = new Effect1(), Target = TargetType.Self},
+    new(){Id=2,Name = "格挡",Endurance = -1,RequirePoints = 1,Repeatable = true,Hope = 2, Effect = new Effect2(), Target = TargetType.Self},
+    new(){Id=3,Name = "搏击",Endurance = 2,RequirePoints = 1,Repeatable = true,RequireAmmo = 20,Damage = 20,Hope = -1, Effect = new Effect3(), Target = TargetType.Opponent},
+    new(){Id=4,Name = "枪击",Endurance = 2,RequirePoints = 2,RequireAmmo = 80,Damage = 70,Hope = -2, Effect = new Effect4(), Target = TargetType.Opponent}
     };
 
     // 无需任何构造函数——record 自带值拷贝
     public static Card From(int index) => Lib[index] with { };
+}
+
+public enum TargetType
+{
+    Self,
+    Opponent
 }
 
 public class Player

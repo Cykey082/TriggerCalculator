@@ -12,34 +12,61 @@ public static class Parser
     /// 第一段给 P0，第二段给 P1……  
     /// 返回按书写顺序展开的所有 Operation（已展开 Repeat）。
     /// </summary>
-    public static List<Operation> Parse(string cmd, Player[] players)
+    // 已移除旧的 Parse 实现。请使用 ParseRequests + RuleEngine 的新流程。
+
+    /// <summary>
+    /// 解析为意图请求（不做状态检测），返回 OperationRequest 列表用于后续验证/执行。
+    /// </summary>
+    public static List<OperationRequest> ParseRequests(string cmd, Player[] players)
     {
         if (players == null) throw new ArgumentNullException(nameof(players));
         var segments = Split(cmd, ';');
         if (segments.Length > players.Length)
             throw new ParserException($"指令段数({segments.Length}) > 玩家数({players.Length})");
 
-        var ops = new List<Operation>();
+        var reqs = new List<OperationRequest>();
         for (int i = 0; i < segments.Length; i++)
         {
             var seg = segments[i];
             if (string.IsNullOrWhiteSpace(seg)) continue;
-            ParseSegment(seg, players[i], players, ops);
+            ParseSegmentRequest(seg, players[i], players, reqs);
         }
-        return ops;
+        return reqs;
     }
 
     /*===================== 私有实现 =====================*/
 
-    private static void ParseSegment(string seg, Player user, Player[] allPlayers, List<Operation> sink)
+    // 旧的 ParseSegment 已删除；保留基于请求的 ParseSegmentRequest
+
+    // 解析为请求（不校验状态）
+    private static void ParseSegmentRequest(string seg, Player user, Player[] allPlayers, List<OperationRequest> sink)
     {
         var tokens = Split(seg, ',');
         foreach (var tok in tokens)
         {
-            var (code, repeat) = ParseToken(tok);        // 1*3 -> (1,3)
-            var op = BuildOperation(code, repeat, user, allPlayers);
-            if (op != null) sink.Add(op);                // 内置牌可能返回 null
+            var (code, repeat) = ParseToken(tok);
+            var req = BuildRequest(code, repeat, user, allPlayers);
+            if (req != null) sink.Add(req);
         }
+    }
+
+    private static OperationRequest? BuildRequest(int code, int repeat, Player user, Player[] allPlayers)
+    {
+        // 支持的 code 与 Parse 中一致，但不做资源/耐久校验（仅语法/编码层面）
+        if (code is 1 or 2)
+        {
+            return new OperationRequest(user, code, repeat);
+        }
+
+        // 手牌槽编码从 11 开始，具体槽位由玩家的 Hand 长度决定
+        if (code >= 11)
+        {
+            var handIndex = code - 11;
+            // 语法层面仍允许指定任意手牌位，后续 RuleEngine 会校验存在性与属性
+            return new OperationRequest(user, code, repeat);
+        }
+
+        throw new ParserException($"无效操作码：{code}");
     }
 
     // 把 "11*3" 拆成 (11,3) ； "13" 拆成 (13,1)
@@ -54,47 +81,7 @@ public static class Parser
         return (code, repeat);
     }
 
-    // 根据 code 生成 Operation；检查资源、耐久等
-    private static Operation? BuildOperation(int code, int repeat, Player user, Player[] allPlayers)
-    {
-        // 1,2 是内置牌
-        if (code is 1 or 2)
-        {
-            var card = Card.From(code);
-            if (repeat * card.RequirePoints > user.ActionPoints) throw new ParserException($"{user.Name} 行动点不足(code={code})");
-            user.ActionPoints -= repeat * card.RequirePoints;
-            return new Operation(user, user, card, repeat);
-        }
-
-        // 11,12,13 对应 Hand 0,1,2
-        if (code is 11 or 12 or 13)
-        {
-            int handIndex = code - 11;
-            if (handIndex >= user.Hand.Length || user.Hand[handIndex] is not { } card)
-                throw new ParserException($"{user.Name} 手牌位{handIndex}为空");
-
-            if (code == 13 && repeat != 1)
-                throw new ParserException("13号位(枪击)不允许叠加");
-
-            if (repeat > card.Endurance)
-                throw new ParserException($"{user.Name} 牌【{card.Name}】耐久不足");
-
-            if (repeat * card.RequirePoints > user.ActionPoints)
-                throw new ParserException($"{user.Name} 行动点不足(code={code})");
-
-            if (user.Ammo < user.Hand[handIndex]!.RequireAmmo * repeat)
-                throw new ParserException($"{user.Name} 火药不足(code={code})");
-
-            user.ActionPoints -= repeat * card.RequirePoints;
-            // 13 打对方，其余打自己
-            var target = code is 11 or 12 or 13
-                ? allPlayers.First(p => p != user)
-                : user;
-            return new Operation(user, target, card, repeat);
-        }
-
-        throw new ParserException($"无效操作码：{code}");
-    }
+    // 旧的 BuildOperation 已删除；使用 ParseRequests + RuleEngine，并在通过校验后由调用方构建 Operation
 
     // 统一 split 去空
     private static string[] Split(string s, char c)
