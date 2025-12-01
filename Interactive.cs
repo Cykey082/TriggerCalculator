@@ -38,15 +38,15 @@ public static class Interactive
                     activePid = (activePid + 1) % players;
                     selectedIdx = Math.Min(selectedIdx, counts[activePid].Length - 1);
                 }
-                else if (key.Key == ConsoleKey.UpArrow)
+                else if (key.Key == ConsoleKey.UpArrow || key.Key == ConsoleKey.K)
                 {
                     selectedIdx = Math.Max(0, selectedIdx - 1);
                 }
-                else if (key.Key == ConsoleKey.DownArrow)
+                else if (key.Key == ConsoleKey.DownArrow || key.Key == ConsoleKey.J)
                 {
                     selectedIdx = Math.Min(counts[activePid].Length - 1, selectedIdx + 1);
                 }
-                else if (key.Key == ConsoleKey.RightArrow)
+                else if (key.Key == ConsoleKey.RightArrow || key.Key == ConsoleKey.L)
                 {
                     // 尝试增加当前选项
                     var player = storage.Players[activePid];
@@ -97,7 +97,7 @@ public static class Interactive
                     // update remaining mp
                     mps[activePid] = player.ActionPoints - cost;
                 }
-                else if (key.Key == ConsoleKey.LeftArrow)
+                else if (key.Key == ConsoleKey.LeftArrow || key.Key == ConsoleKey.H)
                 {
                     // decrease current option
                     var arr = counts[activePid];
@@ -248,16 +248,16 @@ public static class Interactive
         Console.SetCursorPosition(0, Console.WindowHeight - 4);
         Console.WriteLine("说明: ↑/↓ 选择, ←/→ 改变次数, Tab 切换角色, Enter 结束回合".PadRight(width - 1));
 
-        // 显示当前光标对应的操作介绍
+        // 显示当前光标对应的操作介绍（从卡牌本身读取 Description）
         var active = storage.Players[activePid];
         int code = selectedIdx < 2 ? selectedIdx + 1 : 11 + (selectedIdx - 2);
         string desc;
         if (code <= 4)
-            desc = GetDescriptionForId(code);
+            desc = Card.From(code).Description;
         else
         {
             var card = active.Hand[code - 11];
-            desc = card == null ? "(空位)" : GetDescriptionForId(card.Id);
+            desc = card == null ? "(空位)" : card.Description ?? "(无描述)";
         }
         // 显示上一回合事件（若有），在当前说明之上
         if (storage.LastRoundEvents != null && storage.LastRoundEvents.Count > 0)
@@ -286,15 +286,16 @@ public static class Interactive
 
     private static string GetDescriptionForId(int id)
     {
-        // 文本来自 README.md 的卡牌描述
-        return id switch
+        // 从卡牌库读取描述，保持兼容性
+        try
         {
-            1 => "装填：消耗1点行动点。结算：己方装填20弹药（最多160）。",
-            2 => "格挡：消耗1点行动点。结算：获得格挡值（与格挡等级相关），若格挡未被破坏可提升格挡等级。",
-            3 => "搏击：2耐久，消耗1点行动点并需20弹药。结算：造成20点伤害。",
-            4 => "枪击：2耐久，消耗2点行动点并需80弹药。结算：造成70点伤害，并附带2点重伤（Injury +2）。",
-            _ => "未知操作。",
-        };
+            var card = Card.From(id);
+            return string.IsNullOrEmpty(card.Description) ? "(无描述)" : card.Description;
+        }
+        catch
+        {
+            return "未知操作。";
+        }
     }
 
     // 绘制单一玩家面板（含已选次数与光标）

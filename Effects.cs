@@ -24,7 +24,7 @@ public class Effect2 : ICardEffect
     {
         var block = operation.Repeat * (operation.User.BlockLevel + 1) * 10;
         operation.Target.AddBlock(block);
-        storage.AddRoundEvent($"{operation.User.Name} 获得了 {block} 点格挡 (等级:{operation.User.BlockLevel})");
+        storage.AddRoundEvent($"{operation.User.Name} 获得了 {block} 格挡值 (等级:{operation.User.BlockLevel})");
     }
 
     public void PostExecute(Storage storage, Operation operation)
@@ -48,7 +48,7 @@ public class Effect3 : ICardEffect
         var rem = operation.Target.AbsorbBlock(damage);
         if (rem > 0)
             operation.Target.ApplyDamage(rem);
-        storage.AddRoundEvent($"{operation.User.Name} 使用 {operation.Card.Name} 消耗 {ammoCost} 弹药，造成 {damage} 点伤害 (穿透后:{rem})。目标HP={operation.Target.Health}");
+        storage.AddRoundEvent($"{operation.User.Name} 使用 {operation.Card.Name} ，造成 {rem} 点伤害。目标HP={operation.Target.Health}");
     }
 
     public void PostExecute(Storage storage, Operation operation) { }
@@ -63,9 +63,16 @@ public class Effect4 : ICardEffect
         var damage = operation.Card.Damage * operation.Repeat;
         var rem = operation.Target.AbsorbBlock(damage);
         if (rem > 0)
+        {
             operation.Target.ApplyDamage(rem);
-        operation.Target.ApplyInjury(2 * operation.Repeat);
-        storage.AddRoundEvent($"{operation.User.Name} 使用 {operation.Card.Name} 消耗 {ammoCost} 弹药，造成 {damage} 点伤害，附带重伤 {2 * operation.Repeat}。目标HP={operation.Target.Health}");
+            operation.Target.ApplyInjury(2 * operation.Repeat);
+            storage.AddRoundEvent($"{operation.User.Name} 使用 {operation.Card.Name} ，造成 {rem} 点伤害，附带重伤 {2 * operation.Repeat}。目标HP={operation.Target.Health}");
+        }
+        else
+        {
+            storage.AddRoundEvent($"{operation.User.Name} 使用 {operation.Card.Name} ，造成 {rem} 点伤害。目标HP={operation.Target.Health}");
+        }
+        
     }
 
     public void PostExecute(Storage storage, Operation operation) { }

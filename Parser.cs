@@ -7,14 +7,6 @@ using System.Linq;
 public static class Parser
 {
     /// <summary>
-    /// 入口函数  
-    /// cmd 格式： "2*2,13;11,12*3"  
-    /// 第一段给 P0，第二段给 P1……  
-    /// 返回按书写顺序展开的所有 Operation（已展开 Repeat）。
-    /// </summary>
-    // 已移除旧的 Parse 实现。请使用 ParseRequests + RuleEngine 的新流程。
-
-    /// <summary>
     /// 解析为意图请求（不做状态检测），返回 OperationRequest 列表用于后续验证/执行。
     /// </summary>
     public static List<OperationRequest> ParseRequests(string cmd, Player[] players)
@@ -35,8 +27,6 @@ public static class Parser
     }
 
     /*===================== 私有实现 =====================*/
-
-    // 旧的 ParseSegment 已删除；保留基于请求的 ParseSegmentRequest
 
     // 解析为请求（不校验状态）
     private static void ParseSegmentRequest(string seg, Player user, Player[] allPlayers, List<OperationRequest> sink)
@@ -80,8 +70,6 @@ public static class Parser
             throw new ParserException($"重复次数必须>0：{token}");
         return (code, repeat);
     }
-
-    // 旧的 BuildOperation 已删除；使用 ParseRequests + RuleEngine，并在通过校验后由调用方构建 Operation
 
     // 统一 split 去空
     private static string[] Split(string s, char c)

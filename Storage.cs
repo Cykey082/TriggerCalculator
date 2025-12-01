@@ -5,6 +5,7 @@ public record Card
     public int Id { get; init; }
     public int Hope { get; init; }
     public string Name { get; init; } = "Card.Null";
+        public string Description { get; init; } = string.Empty;
     public int RequirePoints { get; init; }
     public int RequireAmmo { get; init; }
     public int Endurance { get; set; }
@@ -13,14 +14,14 @@ public record Card
     public ICardEffect? Effect { get; init; }
     public TargetType Target { get; init; } = TargetType.Self;
 
-    public static readonly Card[] Lib =
-    {
-        new(),
-    new(){Id=1,Name = "装填",Endurance = -1,RequirePoints = 1,Repeatable = true,Hope = 1, Effect = new Effect1(), Target = TargetType.Self},
-    new(){Id=2,Name = "格挡",Endurance = -1,RequirePoints = 1,Repeatable = true,Hope = 2, Effect = new Effect2(), Target = TargetType.Self},
-    new(){Id=3,Name = "搏击",Endurance = 2,RequirePoints = 1,Repeatable = true,RequireAmmo = 20,Damage = 20,Hope = -1, Effect = new Effect3(), Target = TargetType.Opponent},
-    new(){Id=4,Name = "枪击",Endurance = 2,RequirePoints = 2,RequireAmmo = 80,Damage = 70,Hope = -2, Effect = new Effect4(), Target = TargetType.Opponent}
-    };
+        public static readonly Card[] Lib =
+        {
+            new(),
+            new(){Id=1,Name = "装填",Description = "装填：消耗1点行动点。结算：己方装填20弹药（最多160）。",Endurance = -1,RequirePoints = 1,Repeatable = true,Hope = 1, Effect = new Effect1(), Target = TargetType.Self},
+            new(){Id=2,Name = "格挡",Description = "格挡：消耗1点行动点。结算：基于格挡等级获得（20/30/40）格挡值。若格挡未被使用则提升格挡等级。",Endurance = -1,RequirePoints = 1,Repeatable = true,Hope = 2, Effect = new Effect2(), Target = TargetType.Self},
+            new(){Id=3,Name = "搏击",Description = "搏击：2耐久，消耗1点行动点与20弹药。结算：造成20点伤害。",Endurance = 2,RequirePoints = 1,Repeatable = true,RequireAmmo = 20,Damage = 20,Hope = -1, Effect = new Effect3(), Target = TargetType.Opponent},
+            new(){Id=4,Name = "枪击",Description = "枪击：2耐久，消耗2点行动点与80弹药。结算：造成70点伤害，并附带2（重伤）。",Endurance = 2,RequirePoints = 2,RequireAmmo = 80,Damage = 70,Hope = -2, Effect = new Effect4(), Target = TargetType.Opponent}
+        };
 
     // 无需任何构造函数——record 自带值拷贝
     public static Card From(int index) => Lib[index] with { };
@@ -157,5 +158,11 @@ public class Storage
     {
         Players[0] = new Player(){Name = "P1"};
         Players[1] = new Player(){Name = "P2"};
+    }
+    public Storage(string[] names)
+    {
+        if(names.Length!=2)throw new ArgumentException("names length must be 2");
+        Players[0] = new Player(){Name = names[0]};
+        Players[1] = new Player(){Name = names[1]};
     }
 }
