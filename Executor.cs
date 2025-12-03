@@ -108,11 +108,11 @@ public static class Executor
     {
         if (operation.Card.Endurance > 0)
             operation.Card.Endurance -= operation.Repeat;
-        operation.Card.Effect?.Execute(storage, operation);
+        operation.Card.ExecuteAction?.Invoke(storage, operation);
     }
     public static void PostExecutes(this Storage storage, Operation operation)
     {
-        operation.Card.Effect?.PostExecute(storage, operation);
+        operation.Card.PostExecuteAction?.Invoke(storage, operation);
     }
     public static void PostExecute(this Storage storage)
     {

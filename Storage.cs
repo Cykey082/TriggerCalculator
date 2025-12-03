@@ -11,17 +11,12 @@ public record Card
     public int Endurance { get; set; }
     public bool Repeatable { get; init; }
     public int Damage { get; init; }
-    public ICardEffect? Effect { get; init; }
+    public System.Action<Storage, Operation>? ExecuteAction { get; init; }
+    public System.Action<Storage, Operation>? PostExecuteAction { get; init; }
     public TargetType Target { get; init; } = TargetType.Self;
 
-        public static readonly Card[] Lib =
-        {
-            new(),
-            new(){Id=1,Name = "装填",Description = "装填：消耗1点行动点。结算：己方装填20弹药（最多160）。",Endurance = -1,RequirePoints = 1,Repeatable = true,Hope = 1, Effect = new Effect1(), Target = TargetType.Self},
-            new(){Id=2,Name = "格挡",Description = "格挡：消耗1点行动点。结算：基于格挡等级获得（20/30/40）格挡值。若格挡未被使用则提升格挡等级。",Endurance = -1,RequirePoints = 1,Repeatable = true,Hope = 2, Effect = new Effect2(), Target = TargetType.Self},
-            new(){Id=3,Name = "搏击",Description = "搏击：2耐久，消耗1点行动点与20弹药。结算：造成20点伤害。",Endurance = 2,RequirePoints = 1,Repeatable = true,RequireAmmo = 20,Damage = 20,Hope = -1, Effect = new Effect3(), Target = TargetType.Opponent},
-            new(){Id=4,Name = "枪击",Description = "枪击：2耐久，消耗2点行动点与80弹药。结算：造成70点伤害，并附带2（重伤）。",Endurance = 2,RequirePoints = 2,RequireAmmo = 80,Damage = 70,Hope = -2, Effect = new Effect4(), Target = TargetType.Opponent}
-        };
+        // 卡牌库通过反射动态加载（查找实现了 ICardBuilder 的类型）
+        public static readonly Card[] Lib = CardLoader.LoadLibrary();
 
     // 无需任何构造函数——record 自带值拷贝
     public static Card From(int index) => Lib[index] with { };
@@ -72,7 +67,7 @@ public class Player
     }
 
     // 返回被 Block 吸收后的剩余伤害
-    public int AbsorbBlock(int damage)
+    private int AbsorbBlock(int damage)
     {
         if (damage <= Block)
         {
@@ -84,13 +79,16 @@ public class Player
         return rem;
     }
 
-    public void ApplyDamage(int damage)
+    public int ApplyDamage(int damage)
     {
+        damage = AbsorbBlock(damage);
+        if(damage<=0)return 0;
         Health -= damage;
         if (Health <= Injury * 10)
         {
             IsAlive = false;
         }
+        return damage;
     }
 
     public void ApplyInjury(int amount)
