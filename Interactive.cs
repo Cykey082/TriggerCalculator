@@ -8,7 +8,7 @@ namespace TriggerCalculator;
 public static class Interactive
 {
     // 更接近 GUI 的 TUI：左右并排显示双方面板，使用方向键移动选择并按 Enter 加入动作
-    public static void Run(Storage storage)
+    public static void Run(Storage storage,bool MultiPlayer=false)
     {
         while (!storage.IsEnd)
         {
@@ -34,6 +34,7 @@ public static class Interactive
                 var key = Console.ReadKey(true);
                 if (key.Key == ConsoleKey.Tab)
                 {
+                    if(MultiPlayer)continue;
                     // switch player
                     activePid = (activePid + 1) % players;
                     selectedIdx = Math.Min(selectedIdx, counts[activePid].Length - 1);
@@ -53,7 +54,7 @@ public static class Interactive
                     var arr = counts[activePid];
                     int opt = selectedIdx;
                     int code = opt < 2 ? opt + 1 : 11 + (opt - 2);
-                    var card = code <= 4 ? Card.From(code) : player.Hand[code - 11];
+                    var card = code <= 4 ? player.Body[code - 1] : player.Hand[code - 11];
                     if (card == null)
                     {
                         FlashMessage("该手牌位为空。", 400);
@@ -77,7 +78,7 @@ public static class Interactive
                     for (int j = 0; j < arr.Length; j++)
                     {
                         int ccode = j < 2 ? j + 1 : 11 + (j - 2);
-                        var cc = ccode <= 4 ? Card.From(ccode) : player.Hand[ccode - 11];
+                        var cc = ccode <= 4 ? player.Body[ccode - 1] : player.Hand[ccode - 11];
                         if (cc == null) continue;
                         cost += arr[j] * cc.RequirePoints;
                         ammoNeeded += arr[j] * cc.RequireAmmo;
@@ -111,7 +112,7 @@ public static class Interactive
                         for (int j = 0; j < arr.Length; j++)
                         {
                             int ccode = j < 2 ? j + 1 : 11 + (j - 2);
-                            var cc = ccode <= 4 ? Card.From(ccode) : player.Hand[ccode - 11];
+                            var cc = ccode <= 4 ? player.Body[ccode - 1] : player.Hand[ccode - 11];
                             if (cc == null) continue;
                             cost += arr[j] * cc.RequirePoints;
                         }
@@ -159,7 +160,7 @@ public static class Interactive
                             var repeat = req.Repeat;
                             if (code is 1 or 2)
                             {
-                                var card = Card.From(code);
+                                var card = user.Body[code - 1];
                                 ops.Add(new Operation(user, user, card, repeat));
                             }
                             else if (code >= 11)
@@ -253,7 +254,7 @@ public static class Interactive
         int code = selectedIdx < 2 ? selectedIdx + 1 : 11 + (selectedIdx - 2);
         string desc;
         if (code <= 4)
-            desc = Card.From(code).Description;
+            desc = active.Body[code - 1].Description;
         else
         {
             var card = active.Hand[code - 11];
@@ -284,20 +285,6 @@ public static class Interactive
         Console.WriteLine(("当前: " + desc).PadRight(width - 1));
     }
 
-    private static string GetDescriptionForId(int id)
-    {
-        // 从卡牌库读取描述，保持兼容性
-        try
-        {
-            var card = Card.From(id);
-            return string.IsNullOrEmpty(card.Description) ? "(无描述)" : card.Description;
-        }
-        catch
-        {
-            return "未知操作。";
-        }
-    }
-
     // 绘制单一玩家面板（含已选次数与光标）
     private static void DrawPlayerPanelRealtime(Player p, int left, int width, int[] arr, int selectedIdx, bool isActivePlayer, int mp)
     {
@@ -322,7 +309,7 @@ public static class Interactive
             // cursor symbol >> if this is the currently selected option and this player is active
             string cursor = (isActivePlayer && opt == selectedIdx) ? ">>" : "  ";
             int code = opt < 2 ? opt + 1 : 11 + (opt - 2);
-            var card = code <= 4 ? Card.From(code) : p.Hand[code - 11];
+            var card = code <= 4 ? p.Body[code - 1] : p.Hand[code - 11];
             string label;
             if (card == null) label = " [ ]";
             else label = $" [{card.Name}]{(card.Endurance>=0?" Usage:"+card.Endurance.ToString(): string.Empty)} Points:{card.RequirePoints} Ammo:{card.RequireAmmo}";

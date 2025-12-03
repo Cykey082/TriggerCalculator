@@ -5,7 +5,7 @@ public record Card
     public int Id { get; init; }
     public int Hope { get; init; }
     public string Name { get; init; } = "Card.Null";
-        public string Description { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
     public int RequirePoints { get; init; }
     public int RequireAmmo { get; init; }
     public int Endurance { get; set; }
@@ -15,11 +15,11 @@ public record Card
     public System.Action<Storage, Operation>? PostExecuteAction { get; init; }
     public TargetType Target { get; init; } = TargetType.Self;
 
-        // 卡牌库通过反射动态加载（查找实现了 ICardBuilder 的类型）
-        public static readonly Card[] Lib = CardLoader.LoadLibrary();
+    // 卡牌库通过反射动态加载（查找实现了 ICardBuilder 的类型）
+    public static readonly Card[] Lib = CardLoader.LoadLibrary();
 
     // 无需任何构造函数——record 自带值拷贝
-    public static Card From(int index) => Lib[index] with { };
+    public static Card FromID(int index) => Lib[index] with { };
 }
 
 public enum TargetType
@@ -46,10 +46,11 @@ public class Player
     public int BlockLevel { get; set; } = 1;
 
     // 行为方法（面向对象封装）
-    public void AddAmmo(int amount)
+    public void AddAmmo(int amount,bool force=false)
     {
+        if(!force&&Ammo>=MaxAmmo)return;
         Ammo += amount;
-        if (Ammo > MaxAmmo) Ammo = MaxAmmo;
+        if (!force && Ammo > MaxAmmo) Ammo = MaxAmmo;
     }
 
     public bool HasAmmo(int amount) => Ammo >= amount;
@@ -57,7 +58,6 @@ public class Player
     public void ConsumeAmmo(int amount)
     {
         Ammo -= amount;
-        if (Ammo < 0) Ammo = 0;
     }
 
     public void AddBlock(int amount)
@@ -121,8 +121,8 @@ public class Player
 
     public Player()
     {
-        Body=[Card.From(1),Card.From(2)];
-        Hand=[Card.From(3),Card.From(3),Card.From(4),null];
+        Body=[Card.FromID(1),Card.FromID(2)];
+        Hand=[Card.FromID(3),Card.FromID(3),Card.FromID(4),null];
     }
 }
 public class Storage

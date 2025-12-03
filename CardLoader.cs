@@ -43,10 +43,10 @@ public static class CardLoader
             }
         }
 
-        if (!cards.Any())
+        if (cards.Count == 0)
         {
             // fallback minimal library
-            return new[] { new Card() };
+            return [new Card()];
         }
 
         int maxId = cards.Max(c => c.Id);

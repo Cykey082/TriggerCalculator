@@ -74,7 +74,7 @@ public class RuleEngine : IRuleEngine
                 int code = req.Code;
                 if (code is 1 or 2)
                 {
-                    var card = Card.From(code);
+                    var card = Card.FromID(code);
                     totalPoints += req.Repeat * card.RequirePoints;
                     // built-in have no ammo
                 }
