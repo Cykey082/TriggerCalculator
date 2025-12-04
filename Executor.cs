@@ -33,7 +33,7 @@ public static class Executor
                 var repeat = req.Repeat;
                 if (code is 1 or 2)
                 {
-                    var card = Card.From(code);
+                    var card = Card.FromID(code);
                     ops.Add(new Operation(user, user, card, repeat));
                 }
                 else if (code >= 11)

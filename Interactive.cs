@@ -10,6 +10,7 @@ public static class Interactive
     // 更接近 GUI 的 TUI：左右并排显示双方面板，使用方向键移动选择并按 Enter 加入动作
     public static void Run(Storage storage,bool MultiPlayer=false)
     {
+        var Client=MultiPlayer?new Client("127.0.0.1", 12345, "Player"):null;
         while (!storage.IsEnd)
         {
             Console.CursorVisible = false;
@@ -61,7 +62,8 @@ public static class Interactive
                         continue;
                     }
                     int cur = arr[opt];
-                    int maxRepeat = card.Repeatable ? card.Endurance==-1?int.MaxValue : card.Endurance:1;                    if (!card.Repeatable && cur >= card.Endurance)
+                    int maxRepeat = card.Repeatable ? card.Endurance==-1?int.MaxValue : card.Endurance:1;                    
+                    if (!card.Repeatable && cur >= card.Endurance)
                     {
                         FlashMessage("耐久不足。", 400);
                         continue;
@@ -121,36 +123,10 @@ public static class Interactive
                 }
                 else if (key.Key == ConsoleKey.Enter)
                 {
-                    // finalize round: build command string, parse into requests, validate via RuleEngine, then execute
-                    var segments = new string[players];
-                    for (int p = 0; p < players; p++)
-                    {
-                        var pArr = counts[p];
-                        var list = new List<string>();
-                        for (int j = 0; j < pArr.Length; j++)
-                        {
-                            if (pArr[j] <= 0) continue;
-                            int ccode = j < 2 ? j + 1 : 11 + (j - 2);
-                            list.Add(pArr[j] == 1 ? $"{ccode}" : $"{ccode}*{pArr[j]}");
-                        }
-                        segments[p] = string.Join(',', list);
-                    }
-                    var command = string.Join(';', segments);
+                    var command = MultiPlayer?CommandsGen(players, counts,Client!):CommandGen(players, counts);
                     try
                     {
-                        var requests = Parser.ParseRequests(command, storage.Players);
-                        var validator = new RuleEngine();
-                        var vr = validator.ValidateRequests(requests, storage);
-                        if (!vr.IsValid)
-                        {
-                            // show multiple errors
-                            if (vr.Errors != null && vr.Errors.Count > 0)
-                                FlashMessages(vr.Errors, 1000);
-                            else
-                                FlashMessage(vr.Message, 1000);
-                            continue; // back to planning
-                        }
-
+                        if(!CommandCheck(command, storage,out var requests))continue;
                         // convert requests to operations
                         var ops = new List<Operation>();
                         foreach (var req in requests)
@@ -229,6 +205,68 @@ public static class Interactive
         if (sp.Length == 2 && int.TryParse(sp[1], out int r)) repeat = r;
         return (code, repeat);
     }
+    private static string CommandGen(int players, List<int[]> counts)
+    {
+        // finalize round: build command string, parse into requests, validate via RuleEngine, then execute
+        var segments = new string[players];
+        for (int p = 0; p < players; p++)
+        {
+            var pArr = counts[p];
+            var list = new List<string>();
+            for (int j = 0; j < pArr.Length; j++)
+            {
+                if (pArr[j] <= 0) continue;
+                int ccode = j < 2 ? j + 1 : 11 + (j - 2);
+                list.Add(pArr[j] == 1 ? $"{ccode}" : $"{ccode}*{pArr[j]}");
+            }
+            segments[p] = string.Join(',', list);
+        }
+        var command = string.Join(';', segments);
+        return command;
+    }
+    private static string CommandsGen(int players, List<int[]> counts,Client client)
+    {
+        //Todo:目前双方仅依赖Interactive动态拦截，故多人模式下暂不额外校验
+        var segments = string.Empty;
+        for (int p = 0; p < 1; p++)
+        {
+            var pArr = counts[p];
+            var list = new List<string>();
+            for (int j = 0; j < pArr.Length; j++)
+            {
+                if (pArr[j] <= 0) continue;
+                int ccode = j < 2 ? j + 1 : 11 + (j - 2);
+                list.Add(pArr[j] == 1 ? $"{ccode}" : $"{ccode}*{pArr[j]}");
+            }
+            segments = string.Join(',', list);
+        }
+        client.SendOperation(segments);
+        var operation=client.Operation;
+        while(operation==null)
+        {
+            operation=client.Operation;
+            FlashMessage("等待对方操作...",100);
+            client.Recv();
+        }
+        var command = $"{segments};{operation}";
+        return command;
+    }
+    private static bool CommandCheck(string command, Storage storage,out List<OperationRequest> requests)
+    {
+        requests = Parser.ParseRequests(command, storage.Players);
+        var validator = new RuleEngine();
+        var vr = validator.ValidateRequests(requests, storage);
+        if (!vr.IsValid)
+        {
+            // show multiple errors
+            if (vr.Errors != null && vr.Errors.Count > 0)
+                FlashMessages(vr.Errors, 1000);
+            else
+                FlashMessage(vr.Message, 1000);
+            return false;
+        }
+        return true;
+    }
 
     // 实时绘制左右面板与选择信息。counts: 每位玩家每个选项的已选次数；mps: 每位剩余行动点
     private static void DrawBothPanelsRealtime(Storage storage, int activePid, int selectedIdx, List<int[]> counts, int[] mps)
@@ -263,8 +301,8 @@ public static class Interactive
         // 显示上一回合事件（若有），在当前说明之上
         if (storage.LastRoundEvents != null && storage.LastRoundEvents.Count > 0)
         {
-            int maxLines = 3;
-            int startLine = Console.WindowHeight - 7 - maxLines;
+            int maxLines = 8;
+            int startLine = Console.WindowHeight - 6 - maxLines;
             if (startLine < 0) startLine = 0;
             Console.SetCursorPosition(0, startLine);
             Console.WriteLine("--- 上回合发生 ---".PadRight(width - 1));
