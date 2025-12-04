@@ -138,9 +138,9 @@ def handle_client(client: Client):
             pass
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(('0.0.0.0', 12345))
+server_socket.bind(('0.0.0.0', 51204))
 server_socket.listen(128)
-print("Server is listening on port 12345")
+print("Server is listening on port 51204")
 while True:
     try:
         client_socket, addr = server_socket.accept()

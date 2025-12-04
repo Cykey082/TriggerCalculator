@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriggerCalculator", "TriggerCalculator.csproj", "{0EF86421-CBEA-4493-B0F5-705825A45B37}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriggerCalculator", "TriggerCalculator/TriggerCalculator.csproj", "{0EF86421-CBEA-4493-B0F5-705825A45B37}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

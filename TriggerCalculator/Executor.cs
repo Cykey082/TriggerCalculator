@@ -55,8 +55,7 @@ public static class Executor
 
             foreach (var result in results)
             {
-                // 打印并记录操作描述
-                result.Print();
+                // 记录操作描述
                 storage.AddRoundEvent(result.ToString());
                 storage.Executes(result);
             }
@@ -90,7 +89,6 @@ public static class Executor
 
         foreach (var op in results)
         {
-            op.Print();
             storage.AddRoundEvent(op.ToString());
             storage.Executes(op);
         }

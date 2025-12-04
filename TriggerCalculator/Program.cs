@@ -5,7 +5,7 @@ Console.WriteLine("是否启用多人模式？(y/N)：");
 var key = Console.ReadKey(true);
 bool multi = key.Key == ConsoleKey.Y;
 string host = "127.0.0.1";
-int port = 12345;
+int port = 51204;
 string name = "Player";
 if (multi)
 {
