@@ -8,9 +8,9 @@ namespace TriggerCalculator;
 public static class Interactive
 {
     // 更接近 GUI 的 TUI：左右并排显示双方面板，使用方向键移动选择并按 Enter 加入动作
-    public static void Run(Storage storage,bool MultiPlayer=false)
+    public static void Run(Storage storage, bool MultiPlayer = false, string host = "127.0.0.1", int port = 12345, string name = "Player", Client? existingClient = null)
     {
-        var Client=MultiPlayer?new Client("127.0.0.1", 12345, "Player"):null;
+        var Client = existingClient ?? (MultiPlayer ? new Client(host, port, name) : null);
         while (!storage.IsEnd)
         {
             Console.CursorVisible = false;

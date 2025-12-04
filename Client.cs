@@ -4,12 +4,15 @@ using System;
 
 namespace TriggerCalculator;
 
-class Client : IDisposable
+public class Client : IDisposable
 {
     public string Name { get; }
+    public string? PeerName => _peerName;
     public Socket socket { get; }
     public string? Operation => Interlocked.Exchange(ref _operation, null);
     private string? _operation;
+    private string? _peerName;
+    private readonly System.Diagnostics.Stopwatch _sw = new System.Diagnostics.Stopwatch();
     private void Send(string str)
     {
         lock (socket)
@@ -35,6 +38,10 @@ class Client : IDisposable
                 // 原子写入
                 Interlocked.Exchange(ref _operation, msg.Substring("OPERATION:".Length));
             }
+            else if (msg.StartsWith("PEERNAME:"))
+            {
+                _peerName = msg.Substring("PEERNAME:".Length).Trim();
+            }
         }
         catch (SocketException ex)
         {
@@ -49,6 +56,10 @@ class Client : IDisposable
     {
         Send($"OPERATION:{operation}");
     }
+    public void SendFind(string opponentName)
+    {
+        Send($"FIND:{opponentName}");
+    }
     public Client(string ip, int port, string name)
     {
         Name = name;
@@ -56,6 +67,20 @@ class Client : IDisposable
         // set a receive timeout so Recv doesn't block forever
         socket.ReceiveTimeout = 2000; // 2 seconds
         socket.Connect(ip, port);
+        // announce our name to server
+        Send($"NAME:{name}");
+    }
+
+    public string WaitForPeerName(int timeoutMs = 10000)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (true)
+        {
+            if (_peerName != null) return _peerName;
+            try { Recv(); } catch { }
+            System.Threading.Thread.Sleep(50);
+            if (sw.ElapsedMilliseconds > timeoutMs) throw new TimeoutException("Timeout waiting for peer name");
+        }
     }
 
     public void Dispose()
