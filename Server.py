@@ -142,7 +142,11 @@ server_socket.bind(('0.0.0.0', 12345))
 server_socket.listen(128)
 print("Server is listening on port 12345")
 while True:
-    client_socket, addr = server_socket.accept()
-    print(f"Accepted connection from {addr}")
-    client = Client(client_socket)
-    threading.Thread(target=handle_client, args=(client,)).start()
+    try:
+        client_socket, addr = server_socket.accept()
+        print(f"Accepted connection from {addr}")
+        client = Client(client_socket)
+        threading.Thread(target=handle_client, args=(client,)).start()
+    except KeyboardInterrupt:
+        server_socket.close()
+        break

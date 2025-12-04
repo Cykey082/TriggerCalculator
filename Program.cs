@@ -12,6 +12,7 @@ if (multi)
     Console.WriteLine();
     Console.WriteLine($"使用默认网络配置: host={host} port={port}");
     Console.Write($"按 Enter 接受默认，或输入 host[:port]（例如 {host}:{port}）：");
+    Console.WriteLine();
     var input = Console.ReadLine();
     if (!string.IsNullOrWhiteSpace(input))
     {
@@ -41,13 +42,22 @@ if (multi)
         string opponentName = Console.ReadLine() ?? string.Empty;
         while (string.IsNullOrWhiteSpace(opponentName))
         {
-            Console.Write("对手名字不能为空，请重新输入: ");
-            opponentName = Console.ReadLine() ?? string.Empty;
+            try
+            {
+                peerName = client.WaitForPeerName(1000);
+                break;
+            }
+            catch (TimeoutException)
+            {
+                Console.Write("请输入要匹配的对手名字（区分大小写）: ");
+                opponentName = Console.ReadLine() ?? string.Empty;
+            }
         }
         client.SendFind(opponentName.Trim());
         try
         {
-            peerName = client.WaitForPeerName(10000);
+            Console.WriteLine("正在等待对方连接...60秒内有效");
+            peerName = client.WaitForPeerName(60000);
         }
         catch (Exception ex)
         {
